@@ -13,4 +13,10 @@ export class Signal extends BaseEntity {
 
   @Column()
   route: string;
+
+  @Column({ type: 'decimal', precision: 20, scale: 2 })
+  buy: number;
+
+  @Column({ type: 'decimal', precision: 20, scale: 2 })
+  sell: number;
 }

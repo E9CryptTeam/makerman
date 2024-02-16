@@ -25,6 +25,8 @@ export type BinanceTickerMessage = {
 };
 
 export type BinanceSocketMessage = {
+  id: number | null;
   stream: string;
-  data: BinanceTickerMessage[];
+  result: null;
+  data: BinanceTickerMessage;
 };

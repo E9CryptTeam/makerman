@@ -8,7 +8,6 @@ import { PriceUpdatePayload } from 'src/types';
 import { Repository } from 'typeorm';
 
 import BigNumber from 'bignumber.js';
-import { Sign } from 'crypto';
 import { Signal } from 'src/entities/singal.entity';
 
 export class Potention {
@@ -58,7 +57,7 @@ export class PriceUpdateListener {
           select: { price: true },
         });
         if (!binance) {
-          this.logger.debug(`${symbol} not found in Binance`);
+          // this.logger.debug(`${symbol} not found in Binance`);
           return;
         }
 
@@ -84,6 +83,8 @@ export class PriceUpdateListener {
               id: route,
               symbol,
               percentage,
+              buy: a.toNumber(),
+              sell: b.toNumber(),
               route: markets.join(' - '),
             })
             .save();
@@ -104,6 +105,8 @@ export class PriceUpdateListener {
               id: route,
               symbol,
               percentage,
+              buy: b.toNumber(),
+              sell: a.toNumber(),
               route: markets.join(' - '),
             })
             .save();
@@ -114,6 +117,73 @@ export class PriceUpdateListener {
 
   @OnEvent('binance.updated')
   async handleBinanceUpdatedEvent(payload: PriceUpdatePayload) {
-    this.logger.debug('Binance updated', payload);
+    // impl like handleIndodaxUpdatedEvent
+    const currentMarket = Market.BINANCE;
+    const { symbol, price } = payload;
+
+    for (const market of Object.keys(Market)) {
+      if (market === currentMarket) continue;
+      if (market === Market.INDODAX) {
+        const indodax = await this.indodaxTickerRepository.findOne({
+          where: { symbol },
+          select: { price: true },
+        });
+        if (!indodax) {
+          // this.logger.debug(`${symbol} not found in Indodax`);
+          return;
+        }
+
+        const a = new BigNumber(price);
+        const b = new BigNumber(indodax.price);
+        const percentage = calculatePercentageDifference(
+          a.toNumber(),
+          b.toNumber(),
+        );
+        if (a.isGreaterThan(b)) {
+          const markets = [currentMarket, market];
+          const route = `${symbol}.` + markets.join('.');
+          const reversedRoute = `${symbol}.` + markets.reverse().join('.');
+          const reversedSignal = await this.signalRepository.findOneBy({
+            id: reversedRoute,
+          });
+          if (reversedSignal) {
+            await this.signalRepository.remove(reversedSignal);
+          }
+
+          await this.signalRepository
+            .create({
+              id: route,
+              symbol,
+              percentage,
+              buy: a.toNumber(),
+              sell: b.toNumber(),
+              route: markets.join(' - '),
+            })
+            .save();
+        }
+        if (b.isGreaterThan(a)) {
+          const markets = [market, currentMarket];
+          const route = `${symbol}.` + markets.join('.');
+          const reversedRoute = `${symbol}.` + markets.reverse().join('.');
+          const reversedSignal = await this.signalRepository.findOneBy({
+            id: reversedRoute,
+          });
+          if (reversedSignal) {
+            await this.signalRepository.remove(reversedSignal);
+          }
+
+          await this.signalRepository
+            .create({
+              id: route,
+              symbol,
+              percentage,
+              buy: b.toNumber(),
+              sell: a.toNumber(),
+              route: markets.join(' - '),
+            })
+            .save();
+        }
+      }
+    }
   }
 }

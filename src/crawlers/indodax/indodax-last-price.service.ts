@@ -8,14 +8,17 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { IndodaxTicker } from 'src/entities';
 import { Repository } from 'typeorm';
 import { EventEmitter2 } from '@nestjs/event-emitter';
+import { InjectModel } from '@nestjs/mongoose';
+import { ActiveCoin } from 'src/entities/mongo/active-coin.entity';
+import { Model } from 'mongoose';
 
 @Injectable()
-export class IndodaxLastPriceService implements OnModuleInit {
+export class IndodaxCrawlersService implements OnModuleInit {
   private started = false;
   private ws: WebSocket = null;
-  private coins = ['btc', 'eth', 'adx', 'xrp', 'doge', 'ltc', 'bch', 'etc'];
+  private coins: string[] = [];
 
-  private readonly logger = new Logger(IndodaxLastPriceService.name);
+  private readonly logger = new Logger(IndodaxCrawlersService.name);
   private readonly host = 'wss://ws3.indodax.com/ws/';
   private readonly token =
     'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE5NDY2MTg0MTV9.UR1lBM6Eqh0yWz-PVirw1uPCxe60FdchR8eNVdsskeo';
@@ -24,6 +27,9 @@ export class IndodaxLastPriceService implements OnModuleInit {
     @InjectRepository(IndodaxTicker)
     private readonly indodaxTickerRepository: Repository<IndodaxTicker>,
 
+    @InjectModel(ActiveCoin.name)
+    private readonly activeCoinModel: Model<ActiveCoin>,
+
     @Inject(CACHE_MANAGER) private readonly cacheManager: Cache,
 
     private readonly eventEmitter: EventEmitter2,
@@ -31,6 +37,7 @@ export class IndodaxLastPriceService implements OnModuleInit {
   ) {}
 
   async onModuleInit() {
+    await this.indodaxTickerRepository.clear();
     await this.getSnapshot();
 
     this.ws = new WebSocket(this.host);
@@ -44,18 +51,31 @@ export class IndodaxLastPriceService implements OnModuleInit {
       this.logger.error('Error', err);
       this.ws.close();
     });
+
     this.started = true;
   }
 
   private async getSnapshot() {
+    const coins = await this.activeCoinModel
+      .find()
+      .where({
+        indodax: true,
+      })
+      .exec();
+    this.coins = coins.map((c) => c.symbol);
+    this.coins.push('usdt');
     this.logger.debug('Getting snapshot');
     const summary = await this.indodaxSummaryService.get();
     const tickers = this.indodaxTickerRepository.create(
-      summary.map(([symbol, price]) => ({ symbol, price: +price.toFixed(2) })),
+      summary
+        .map(([symbol, price]) => ({ symbol, price: +price.toFixed(2) }))
+        .filter((t) => this.coins.includes(t.symbol)),
     );
-
     const usdt = tickers.find((t) => t.symbol === 'usdt');
-    if (usdt) await this.cacheManager.set('usdt', usdt.price);
+    if (usdt) {
+      await this.cacheManager.set('usdt', usdt.price);
+      tickers.splice(tickers.indexOf(usdt), 1);
+    }
     await this.indodaxTickerRepository.upsert(tickers, ['symbol']);
   }
 
@@ -68,7 +88,7 @@ export class IndodaxLastPriceService implements OnModuleInit {
         params: {
           token: this.token,
         },
-        id: this.coins.length + 20,
+        id: Math.floor(Date.now() / 1000),
       }),
     );
     this.logger.debug('Subscribing to market summary');
@@ -78,7 +98,7 @@ export class IndodaxLastPriceService implements OnModuleInit {
         params: {
           channel: 'market:summary-24h',
         },
-        id: 2,
+        id: Math.floor(Date.now() / 1000) + 1,
       }),
     );
   }
@@ -93,6 +113,7 @@ export class IndodaxLastPriceService implements OnModuleInit {
       const tickers = message.result.data.data as [string, number, number][];
       const parsed = tickers
         .filter(([coin]) => coin.endsWith('idr'))
+        .filter(([coin]) => this.coins.includes(coin.split('idr').shift()))
         .map(([coin, _timestamp, price]) => {
           const symbol = coin.split('idr').shift();
           this.eventEmitter.emit('indodax.updated', { symbol, price });

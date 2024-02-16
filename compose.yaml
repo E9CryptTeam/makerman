@@ -1,0 +1,47 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: makerman-app
+    ports:
+      - '3000:3000'
+    depends_on:
+      - mysql
+      - redis
+    volumes:
+      - ./src:/app/src
+
+  redis:
+    container_name: makerman-redis
+    image: redis:latest
+    restart: always
+    ports:
+      - "6379:6379"
+    volumes:
+      - ./infrastructure/redis/data:/root/redis
+      - ./infrastructure/redis/redis.conf:/usr/local/etc/redis/redis.conf
+    environment:
+      - REDIS_PASSWORD=hjkl1234
+      - REDIS_PORT=6379
+      - REDIS_DATABASES=16
+
+  mysql:
+    container_name: 'makerman-mysql'
+    image: mysql
+    command: --default-authentication-plugin=mysql_native_password
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: makerman
+    ports:
+      - 3307:3306
+
+  nginx:
+    image: nginx:latest
+    ports:
+      - "80:80"
+    volumes:
+      - ./infrastructure/nginx/conf.d/:/etc/nginx/conf.d
+    depends_on:
+      - app

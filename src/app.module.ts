@@ -3,17 +3,18 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { CacheModule } from '@nestjs/cache-manager';
 import { EventEmitterModule } from '@nestjs/event-emitter';
 
-import { IndodaxLastPriceModule } from './indodax-last-price/indodax-last-price.module';
-import { BinanceCrawlerModule } from './binance-crawler/binance-crawler.module';
 import { ListenersModule } from './listeners/listeners.module';
 import { SignalsModule } from './signals/signals.module';
 import { ScheduleModule } from '@nestjs/schedule';
+import { CrawlerModule } from './crawlers/crawlers.module';
+import { MongooseModule } from '@nestjs/mongoose';
+import { StatusMonitorModule } from '@ntlib/status-monitor-nestjs';
 
 @Module({
   imports: [
-    IndodaxLastPriceModule,
-    BinanceCrawlerModule,
+    CrawlerModule,
     ListenersModule,
+    ScheduleModule,
     TypeOrmModule.forRoot({
       type: 'mysql',
       host: 'localhost',
@@ -28,6 +29,10 @@ import { ScheduleModule } from '@nestjs/schedule';
     EventEmitterModule.forRoot(),
     ScheduleModule.forRoot(),
     SignalsModule,
+    MongooseModule.forRoot(
+      'mongodb://root:123456@192.168.1.3:27018/ticker_db_back?authSource=admin',
+    ),
+    StatusMonitorModule.forRoot(),
   ],
 })
-export class AppModule { }
+export class AppModule {}
