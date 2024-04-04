@@ -7,7 +7,7 @@ import { readFileSync } from 'fs';
 export class SignalsController {
   constructor(private readonly signalsService: SignalsService) {}
   @Sse('hx-stream')
-  @Get('test')
+  // @Get('test')
   async sse() {
     return this.signalsService.stream();
   }

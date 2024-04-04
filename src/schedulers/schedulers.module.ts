@@ -8,4 +8,4 @@ import { ComparatorScheduler } from './comparator.scheduler';
   providers: [ComparatorScheduler],
   imports: [TypeOrmModule.forFeature([BinanceTicker, IndodaxTicker, Signal])],
 })
-export class ListenersModule {}
+export class SchedulersModule {}

@@ -73,6 +73,6 @@ export class BinanceCrawlerService implements OnModuleInit {
     const ticker = this.binanceTickerRepository.create({ symbol, price });
 
     await this.binanceTickerRepository.upsert(ticker, ['symbol']);
-    this.eventEmitter.emit('binance.updated', ticker);
+    // this.eventEmitter.emit('binance.updated', ticker);
   }
 }

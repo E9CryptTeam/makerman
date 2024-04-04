@@ -9,6 +9,7 @@ import { Repository } from 'typeorm';
 
 import BigNumber from 'bignumber.js';
 import { Signal } from 'src/entities/singal.entity';
+import { Cron, CronExpression } from '@nestjs/schedule';
 
 export class Potention {
   symbol: string;
@@ -44,146 +45,10 @@ export class PriceUpdateListener {
     private readonly binanceTickerRepository: Repository<BinanceTicker>,
   ) {}
 
-  @OnEvent('indodax.updated')
-  async handleIndodaxUpdatedEvent(payload: PriceUpdatePayload) {
-    const currentMarket = Market.INDODAX;
-    const { symbol, price } = payload;
-
-    for (const market of Object.keys(Market)) {
-      if (market === currentMarket) continue;
-      if (market === Market.BINANCE) {
-        const binance = await this.binanceTickerRepository.findOne({
-          where: { symbol },
-          select: { price: true },
-        });
-        if (!binance) {
-          // this.logger.debug(`${symbol} not found in Binance`);
-          return;
-        }
-
-        const a = new BigNumber(price);
-        const b = new BigNumber(binance.price);
-        const percentage = calculatePercentageDifference(
-          a.toNumber(),
-          b.toNumber(),
-        );
-        if (a.isGreaterThan(b)) {
-          const markets = [currentMarket, market];
-          const route = `${symbol}.` + markets.join('.');
-          const reversedRoute = `${symbol}.` + markets.reverse().join('.');
-          const reversedSignal = await this.signalRepository.findOneBy({
-            id: reversedRoute,
-          });
-          if (reversedSignal) {
-            await this.signalRepository.remove(reversedSignal);
-          }
-
-          await this.signalRepository
-            .create({
-              id: route,
-              symbol,
-              percentage,
-              buy: a.toNumber(),
-              sell: b.toNumber(),
-              route: markets.join(' - '),
-            })
-            .save();
-        }
-        if (b.isGreaterThan(a)) {
-          const markets = [market, currentMarket];
-          const route = `${symbol}.` + markets.join('.');
-          const reversedRoute = `${symbol}.` + markets.reverse().join('.');
-          const reversedSignal = await this.signalRepository.findOneBy({
-            id: reversedRoute,
-          });
-          if (reversedSignal) {
-            await this.signalRepository.remove(reversedSignal);
-          }
-
-          await this.signalRepository
-            .create({
-              id: route,
-              symbol,
-              percentage,
-              buy: b.toNumber(),
-              sell: a.toNumber(),
-              route: markets.join(' - '),
-            })
-            .save();
-        }
-      }
-    }
-  }
-
-  @OnEvent('binance.updated')
-  async handleBinanceUpdatedEvent(payload: PriceUpdatePayload) {
-    // impl like handleIndodaxUpdatedEvent
-    const currentMarket = Market.BINANCE;
-    const { symbol, price } = payload;
-
-    for (const market of Object.keys(Market)) {
-      if (market === currentMarket) continue;
-      if (market === Market.INDODAX) {
-        const indodax = await this.indodaxTickerRepository.findOne({
-          where: { symbol },
-          select: { price: true },
-        });
-        if (!indodax) {
-          // this.logger.debug(`${symbol} not found in Indodax`);
-          return;
-        }
-
-        const a = new BigNumber(price);
-        const b = new BigNumber(indodax.price);
-        const percentage = calculatePercentageDifference(
-          a.toNumber(),
-          b.toNumber(),
-        );
-        if (a.isGreaterThan(b)) {
-          const markets = [currentMarket, market];
-          const route = `${symbol}.` + markets.join('.');
-          const reversedRoute = `${symbol}.` + markets.reverse().join('.');
-          const reversedSignal = await this.signalRepository.findOneBy({
-            id: reversedRoute,
-          });
-          if (reversedSignal) {
-            await this.signalRepository.remove(reversedSignal);
-          }
-
-          await this.signalRepository
-            .create({
-              id: route,
-              symbol,
-              percentage,
-              buy: a.toNumber(),
-              sell: b.toNumber(),
-              route: markets.join(' - '),
-            })
-            .save();
-        }
-        if (b.isGreaterThan(a)) {
-          const markets = [market, currentMarket];
-          const route = `${symbol}.` + markets.join('.');
-          const reversedRoute = `${symbol}.` + markets.reverse().join('.');
-          const reversedSignal = await this.signalRepository.findOneBy({
-            id: reversedRoute,
-          });
-          if (reversedSignal) {
-            await this.signalRepository.remove(reversedSignal);
-          }
-
-          await this.signalRepository
-            .create({
-              id: route,
-              symbol,
-              percentage,
-              buy: b.toNumber(),
-              sell: a.toNumber(),
-              route: markets.join(' - '),
-            })
-            .save();
-        }
-      }
-    }
+  // @OnEvent('indodax.updated')
+  // @Cron(CronExpression.EVERY_SECOND)
+  async handleIndodax() {
+    // const q =  this.indodaxTickerRepository.createQueryBuilder('idx')
   }
 }
+

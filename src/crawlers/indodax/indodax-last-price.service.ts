@@ -116,7 +116,7 @@ export class IndodaxCrawlersService implements OnModuleInit {
         .filter(([coin]) => this.coins.includes(coin.split('idr').shift()))
         .map(([coin, _timestamp, price]) => {
           const symbol = coin.split('idr').shift();
-          this.eventEmitter.emit('indodax.updated', { symbol, price });
+          // this.eventEmitter.emit('indodax.updated', { symbol, price });
 
           const ticker = this.indodaxTickerRepository.create({
             symbol,

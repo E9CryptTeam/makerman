@@ -35,6 +35,6 @@ async function bootstrap() {
     layout: join('layouts', 'main.hbs'),
   });
 
-  await app.listen(+process.env.PORT || 3000);
+  await app.listen(9000, '0.0.0.0');
 }
 bootstrap();

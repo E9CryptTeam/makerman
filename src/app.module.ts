@@ -9,6 +9,7 @@ import { ScheduleModule } from '@nestjs/schedule';
 import { CrawlerModule } from './crawlers/crawlers.module';
 import { MongooseModule } from '@nestjs/mongoose';
 import { StatusMonitorModule } from '@ntlib/status-monitor-nestjs';
+import { SchedulersModule } from './schedulers/schedulers.module';
 
 @Module({
   imports: [
@@ -16,12 +17,12 @@ import { StatusMonitorModule } from '@ntlib/status-monitor-nestjs';
     ListenersModule,
     ScheduleModule,
     TypeOrmModule.forRoot({
-      type: 'mysql',
+      type: 'postgres',
       host: 'localhost',
-      port: 3306,
-      username: 'root',
-      password: 'root',
-      database: 'makerman',
+      port: 5432,
+      username: 'e9admin',
+      password: 'hjkl1234',
+      database: 'ticker',
       autoLoadEntities: true,
       synchronize: true,
     }),
@@ -30,9 +31,10 @@ import { StatusMonitorModule } from '@ntlib/status-monitor-nestjs';
     ScheduleModule.forRoot(),
     SignalsModule,
     MongooseModule.forRoot(
-      'mongodb://root:123456@192.168.1.3:27018/ticker_db_back?authSource=admin',
+      'mongodb://root:123456@localhost:27018/ticker_db_back?authSource=admin',
     ),
     StatusMonitorModule.forRoot(),
+    SchedulersModule,
   ],
 })
 export class AppModule {}
